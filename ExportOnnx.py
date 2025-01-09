@@ -4,7 +4,7 @@ from efficientnet_pytorch import EfficientNet
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--img_size', help='input image size', default=224)
+parser.add_argument('--imgsz', help='input image size', default=224)
 
 parser.add_argument('--volume', help='volume directory', default='moai')
 parser.add_argument('--project', help='project directory', default='test_project')
@@ -24,7 +24,7 @@ model.eval()
 device = torch.device("cuda:0")
 model = model.to(device)
 
-dummy_input = torch.randn(1, 3, opt.img_size, opt.img_size).to(device)
+dummy_input = torch.randn(1, 3, opt.imgsz, opt.imgsz).to(device)
 # batch, channel, size, size
 
 dummy_output = model(dummy_input)
