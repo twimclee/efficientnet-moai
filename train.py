@@ -68,8 +68,8 @@ opt = parser.parse_args()
 ### make folders
 ##########################################################################################
 
- project_path = f'/{opt.volume}/{opt.project}'
-#project_path = f'./{opt.project}'
+project_path = f'/{opt.volume}/{opt.project}'
+# project_path = f'../{opt.project}'
 if not os.path.exists(project_path):
      os.makedirs(project_path)
 
@@ -80,10 +80,6 @@ if not os.path.exists(subproject_path):
 task_path = f'{subproject_path}/{opt.task}'
 if not os.path.exists(task_path):
      os.makedirs(task_path)
-
-dataset_path = f'{task_path}/dataset'
-if not os.path.exists(dataset_path):
-     os.makedirs(dataset_path)
 
 version_path = f'{task_path}/{opt.version}'
 if not os.path.exists(version_path):
@@ -97,9 +93,9 @@ tresult_path = f'{version_path}/training_result'
 if not os.path.exists(tresult_path):
      os.makedirs(tresult_path)
 
-opt.train_path = f'{dataset_path}/train_dataset/train'
-opt.val_path = f'{dataset_path}/train_dataset/valid'
-hyp_path = f'{dataset_path}/train_dataset/hyp.yaml'
+opt.train_path = f'{task_path}/train_dataset/train'
+opt.val_path = f'{task_path}/train_dataset/valid'
+hyp_path = f'{task_path}/train_dataset/hyp.yaml'
 
 
 ##########################################################################################
@@ -250,8 +246,8 @@ twriter = SummaryWriter(tresult_path)
 ##########################################################################################
 ### save arguments
 ##########################################################################################
-opt_list = [ f'{key} : {opt.__dict__[key]}' for key in opt.__dict__ ]
-with open(f'{tresult_path}/args.txt', 'w') as f:
+opt_list = [ f'{key}: {opt.__dict__[key]}' for key in opt.__dict__ ]
+with open(f'{tresult_path}/hyp.yaml', 'w') as f:
     [f.write(f'{st}\n') for st in opt_list]
 
 
