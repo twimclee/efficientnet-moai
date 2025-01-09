@@ -4,7 +4,6 @@ import torch
 import torch.nn as nn
 from torchvision import transforms, datasets
 from torchvision.utils import save_image
-import cv2
 
 from dataset import ImageDataSet
 
