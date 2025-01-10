@@ -21,6 +21,7 @@ from torch.utils.data import Subset
 
 from efficientnet_pytorch import EfficientNet
 
+from dataset import CustomImageFolder
 from torchvision import transforms, datasets
 from torchvision.utils import save_image
 
@@ -35,6 +36,7 @@ parser.add_argument('--model', help='model number 0 - 7', default='5')
 parser.add_argument('--epoch', help='epoch', type=int, default=100)
 parser.add_argument('--train_path', help='train path', type=str, default='./dataset/train')
 parser.add_argument('--val_path', help='val path', type=str, default='./dataset/valid')
+parser.add_argument('--class_names_list', help='class name dictionary', nargs='*', default=['OK', 'NG'])
 parser.add_argument('--bs', help='batch size', type=int, default=8)
 parser.add_argument('--nc', help='number of classes', type=int, default=1)
 parser.add_argument('--lr', help='learning rate', type=float, default=0.01)
@@ -62,7 +64,6 @@ parser.add_argument('--task', help='task directory', default='test_task')
 parser.add_argument('--version', help='version', default='v1')
 
 opt = parser.parse_args()
-
 
 ##########################################################################################
 ### make folders
@@ -96,10 +97,10 @@ if not os.path.exists(tresult_path):
 opt.train_path = f'{task_path}/train_dataset/train'
 opt.val_path = f'{task_path}/train_dataset/valid'
 hyp_path = f'{task_path}/train_dataset/hyp.yaml'
-
+data_path = f'{task_path}/train_dataset/data.yaml'
 
 ##########################################################################################
-### load .yaml
+### load hyperparameter
 ##########################################################################################
 
 with open(hyp_path, 'r') as file:
@@ -126,6 +127,16 @@ with open(hyp_path, 'r') as file:
     opt.rotate = params.get('rotate')
 
 
+##########################################################################################
+### load data
+##########################################################################################
+
+with open(data_path, 'r') as file:
+    params = yaml.safe_load(file)
+
+    class_names_dict = params.get('names')
+
+    opt.class_names_list = [class_names_dict[i] for i in sorted(class_names_dict.keys())]
 
 
 # fc 제외하고 freeze
@@ -143,9 +154,14 @@ random.seed(random_seed)
 torch.manual_seed(random_seed)
 
 #########################################################################################################
-## train dataset
+## train, valid dataset
 #########################################################################################################
-president_dataset = datasets.ImageFolder(
+
+class_to_idx = {class_name: idx for idx, class_name in enumerate(opt.class_names_list)}
+
+datasets_dict = {}
+
+datasets_dict['train'] = CustomImageFolder(
                                 opt.train_path,
                                 transforms.Compose([
                                     transforms.Resize((opt.img_size, opt.img_size)),
@@ -157,30 +173,20 @@ president_dataset = datasets.ImageFolder(
                                     # transforms.RandomResizedCrop(size=512, scale=(0.08, 1.0), ratio=(0.75, 1.33), interpolation=2),
                                     # transforms.RandomErasing(),
                                     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                ]))
+                                ]),class_to_idx=class_to_idx)
 
-#########################################################################################################
-## validation dataset
-#########################################################################################################
-datasets_dict = {}
-if opt.val_path is not None:
-    datasets_dict['train'] = president_dataset
-    datasets_dict['valid'] = datasets.ImageFolder(
+datasets_dict['valid'] = CustomImageFolder(
                                 opt.val_path,
                                 transforms.Compose([
                                     transforms.Resize((opt.img_size, opt.img_size)),
                                     transforms.ToTensor(),
                                     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-
                                     transforms.ColorJitter(brightness=opt.clr_b, contrast=opt.clr_c, saturation=opt.clr_s, hue=opt.clr_h),
                                     transforms.RandomHorizontalFlip(p=opt.hflip),
                                     transforms.RandomVerticalFlip(p=opt.vflip),
                                     transforms.RandomRotation(degrees=opt.rotate),
-                                ]))
-else:
-    train_idx, tmp_idx = train_test_split(list(range(len(president_dataset))), test_size=opt.vrate, random_state=random_seed)
-    datasets_dict['train'] = Subset(president_dataset, train_idx)
-    datasets_dict['valid'] = Subset(president_dataset, tmp_idx)
+                                ]),class_to_idx=class_to_idx)
+
 
 #########################################################################################################
 ## define data loader
@@ -196,10 +202,9 @@ dataloaders['valid'] = torch.utils.data.DataLoader(datasets_dict['valid'],
 batch_num['train'], batch_num['valid'] = len(dataloaders['train']), len(dataloaders['valid'])
 print('batch_size : %d,  tvt : %d / %d' % (batch_size, batch_num['train'], batch_num['valid']))
 
-# for i, (inputs, labels) in enumerate(dataloaders['test']):
-#     print(labels)
-#     sample_fname, a = dataloaders['test'].dataset.samples[i]
-#     print(sample_fname, a)
+for i, (inputs, labels) in enumerate(dataloaders['train']):
+    sample_fname, class_idx = dataloaders['train'].dataset.samples[i]
+    print(sample_fname, class_idx)
 
 #########################################################################################################
 ## model
@@ -215,7 +220,7 @@ model = EfficientNet.from_pretrained(model_name, weights_path=pretrained_model, 
 model = model.to(device)
 
 #########################################################################################################
-## parameters
+## Optimizer
 #########################################################################################################
 epoch = opt.epoch
 
@@ -250,7 +255,6 @@ opt_list = [ f'{key}: {opt.__dict__[key]}' for key in opt.__dict__ ]
 with open(f'{tresult_path}/hyp.yaml', 'w') as f:
     [f.write(f'{st}\n') for st in opt_list]
 
-
 ##########################################################################################
 ### train
 ##########################################################################################
@@ -281,7 +285,6 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                 # Iterate over data.
                 for inputs, labels in tepoch:
-
                     ## RGB to BGR
                     # inputs = inputs[:,[2,1,0],:]
                     

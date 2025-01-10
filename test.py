@@ -128,7 +128,7 @@ def test_and_save(model):
         
         for i, (img, path) in enumerate(dataloader):
             fname = path[0].rsplit('.', 1)[0]
-            fname = fname.rsplit('/', 1)[-1]
+            fname = fname.rsplit('\\', 1)[-1]
             
             img = img.to(device)
 
