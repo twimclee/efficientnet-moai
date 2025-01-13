@@ -29,6 +29,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 
 import yaml
+import csv
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -70,7 +71,7 @@ opt = parser.parse_args()
 ##########################################################################################
 
 project_path = f'/{opt.volume}/{opt.project}'
-# project_path = f'../{opt.project}'
+project_path = f'../{opt.project}'
 if not os.path.exists(project_path):
      os.makedirs(project_path)
 
@@ -126,6 +127,13 @@ with open(hyp_path, 'r') as file:
     opt.vflip = params.get('vflip')
     opt.rotate = params.get('rotate')
 
+##########################################################################################
+### make results.csv header
+##########################################################################################
+
+result_file = open(f'{tresult_path}/results.csv', mode='a', newline='', encoding='utf-8')
+result_csv = csv.writer(result_file)
+result_csv.writerow(["epoch", "accuracy", "loss"])
 
 ##########################################################################################
 ### load data
@@ -338,6 +346,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     twriter.add_scalar("val/loss", epoch_loss, epoch)
                     twriter.add_scalar("val/acc", epoch_acc, epoch)
 
+                    result_csv.writerow([epoch, epoch_acc, epoch_loss])
+                    result_file.flush()
+
                 print('{} Loss: {:.4f} Acc: {:.2f}'.format(phase, epoch_loss, epoch_acc))
                
                 # deep copy the model
@@ -356,6 +367,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     # model.load_state_dict(best_model_wts)
     torch.save(model.state_dict(), f'{weight_path}/last.pt')
     print('model saved')
+
+    result_csv.close()
+
     return model, best_idx, best_acc, train_loss, train_acc, valid_loss, valid_acc
 
 if __name__ == "__main__":
