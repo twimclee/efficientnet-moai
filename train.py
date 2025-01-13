@@ -30,6 +30,7 @@ from tqdm import tqdm
 
 import yaml
 import csv
+from datetime import datetime
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -133,7 +134,7 @@ with open(hyp_path, 'r') as file:
 
 result_file = open(f'{tresult_path}/results.csv', mode='a', newline='', encoding='utf-8')
 result_csv = csv.writer(result_file)
-result_csv.writerow(["epoch", "accuracy", "loss"])
+result_csv.writerow(["epoch", "accuracy", "loss", "time"])
 
 ##########################################################################################
 ### load data
@@ -346,7 +347,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     twriter.add_scalar("val/loss", epoch_loss, epoch)
                     twriter.add_scalar("val/acc", epoch_acc, epoch)
 
-                    result_csv.writerow([epoch, epoch_acc, epoch_loss])
+                    ctime = datetime.now().strftime("%H:%M:%S")
+                    
+                    result_csv.writerow([epoch, epoch_acc, epoch_loss, ctime])
                     result_file.flush()
 
                 print('{} Loss: {:.4f} Acc: {:.2f}'.format(phase, epoch_loss, epoch_acc))
