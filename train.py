@@ -71,7 +71,7 @@ opt = parser.parse_args()
 ##########################################################################################
 
 project_path = f'/{opt.volume}/{opt.project}'
-project_path = f'../{opt.project}'
+# project_path = f'../{opt.project}'
 if not os.path.exists(project_path):
      os.makedirs(project_path)
 
