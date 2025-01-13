@@ -202,9 +202,9 @@ dataloaders['valid'] = torch.utils.data.DataLoader(datasets_dict['valid'],
 batch_num['train'], batch_num['valid'] = len(dataloaders['train']), len(dataloaders['valid'])
 print('batch_size : %d,  tvt : %d / %d' % (batch_size, batch_num['train'], batch_num['valid']))
 
-for i, (inputs, labels) in enumerate(dataloaders['train']):
-    sample_fname, class_idx = dataloaders['train'].dataset.samples[i]
-    print(sample_fname, class_idx)
+# for i, (inputs, labels) in enumerate(dataloaders['train']):
+#     sample_fname, class_idx = dataloaders['train'].dataset.samples[i]
+#     print(sample_fname, class_idx)
 
 #########################################################################################################
 ## model
