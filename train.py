@@ -32,32 +32,11 @@ import yaml
 import csv
 from datetime import datetime
 
+from pathfilemgr import MPathFileManager
+from hyp_data import MHyp, MData
+
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--model', help='model number 0 - 7', default='5')
-parser.add_argument('--epoch', help='epoch', type=int, default=100)
-parser.add_argument('--train_path', help='train path', type=str, default='./dataset/train')
-parser.add_argument('--val_path', help='val path', type=str, default='./dataset/valid')
-parser.add_argument('--class_names_list', help='class name dictionary', nargs='*', default=['OK', 'NG'])
-parser.add_argument('--bs', help='batch size', type=int, default=8)
-parser.add_argument('--nc', help='number of classes', type=int, default=1)
-parser.add_argument('--lr', help='learning rate', type=float, default=0.01)
-parser.add_argument('--wd', help='weight decay', type=float, default=1e-5)
-parser.add_argument('--img_size', help='image size', type=int, default=200)
-parser.add_argument('--vrate', help='validation rate', type=float, default=0.1)
-parser.add_argument('--optim', help='adam | sgd', type=str, default='adam')
-parser.add_argument('--gpu', help='gpu device number', type=int, default=0)
-parser.add_argument('--loss', help='loss function (bce | ce | msm)', type=str, default='ce')
-parser.add_argument('--lr_lambda', help='learning rate lambda', type=float, default=0.98739)
-
-parser.add_argument('--clr_b', help='ColorJitter brightness', type=float, default=0.2)
-parser.add_argument('--clr_c', help='ColorJitter contrast', type=float, default=0.2)
-parser.add_argument('--clr_s', help='ColorJitter saturation', type=float, default=0.2)
-parser.add_argument('--clr_h', help='ColorJitter hue', type=float, default=0.2)
-parser.add_argument('--hflip', help='Random Horizontal Flip', type=float, default=0.5)
-parser.add_argument('--vflip', help='Random Vertical Flip', type=float, default=0.5)
-parser.add_argument('--rotate', help='Random Rotation (degree)', type=int, default=0)
-
 
 parser.add_argument('--volume', help='volume directory', default='moai')
 parser.add_argument('--project', help='project directory', default='test_project')
@@ -68,71 +47,20 @@ parser.add_argument('--version', help='version', default='v1')
 opt = parser.parse_args()
 
 ##########################################################################################
-### make folders
+### make dir and hyp
 ##########################################################################################
 
-project_path = f'/{opt.volume}/{opt.project}'
-# project_path = f'../{opt.project}'
-if not os.path.exists(project_path):
-     os.makedirs(project_path)
-
-subproject_path = f'{project_path}/{opt.subproject}'
-if not os.path.exists(subproject_path):
-     os.makedirs(subproject_path)
-
-task_path = f'{subproject_path}/{opt.task}'
-if not os.path.exists(task_path):
-     os.makedirs(task_path)
-
-version_path = f'{task_path}/{opt.version}'
-if not os.path.exists(version_path):
-     os.makedirs(version_path)
-
-weight_path = f'{version_path}/weights'
-if not os.path.exists(weight_path):
-     os.makedirs(weight_path)
-
-tresult_path = f'{version_path}/training_result'
-if not os.path.exists(tresult_path):
-     os.makedirs(tresult_path)
-
-opt.train_path = f'{task_path}/train_dataset/train'
-opt.val_path = f'{task_path}/train_dataset/valid'
-hyp_path = f'{task_path}/train_dataset/hyp.yaml'
-data_path = f'{task_path}/train_dataset/data.yaml'
-
-##########################################################################################
-### load hyperparameter
-##########################################################################################
-
-with open(hyp_path, 'r') as file:
-    params = yaml.safe_load(file)
-
-    opt.model = params.get('model')
-    opt.epoch = params.get('epoch')
-    opt.bs = params.get('batch_size')
-    opt.nc = params.get('num_class')
-    opt.lr = params.get('learning_rate')
-    opt.wd = params.get('weight_decay')
-    opt.img_size = params.get('img_size')
-    opt.optim = params.get('optim')
-    opt.gpu = params.get('gpu')
-    opt.loss = params.get('loss')
-    opt.lr_lambda = params.get('lr_lambda')
-
-    opt.clr_b = params.get('brightness')
-    opt.clr_c = params.get('contrast')
-    opt.clr_s = params.get('saturation')
-    opt.clr_h = params.get('hue')
-    opt.hflip = params.get('hflip')
-    opt.vflip = params.get('vflip')
-    opt.rotate = params.get('rotate')
+mpfm = MPathFileManager(opt.volume, opt.project, opt.subproject, opt.task, opt.version)
+mhyp = MHyp()
+mdata = MData()
+mpfm.load_train_hyp(mhyp)
+mpfm.load_train_data(mdata)
 
 ##########################################################################################
 ### make results.csv header
 ##########################################################################################
 
-result_file = open(f'{tresult_path}/results.csv', mode='a', newline='', encoding='utf-8')
+result_file = open(mpfm.result_csv, mode='a', newline='', encoding='utf-8')
 result_csv = csv.writer(result_file)
 result_csv.writerow(["epoch", "accuracy", "loss", "time"])
 
@@ -140,13 +68,9 @@ result_csv.writerow(["epoch", "accuracy", "loss", "time"])
 ### load data
 ##########################################################################################
 
-with open(data_path, 'r') as file:
-    params = yaml.safe_load(file)
+class_names_list = [mdata.names[i] for i in sorted(mdata.names.keys())]
 
-    class_names_dict = params.get('names')
-
-    opt.class_names_list = [class_names_dict[i] for i in sorted(class_names_dict.keys())]
-
+print(class_names_list)
 
 # fc 제외하고 freeze
 # for n, p in model.named_parameters():
@@ -157,7 +81,7 @@ with open(data_path, 'r') as file:
 #########################################################################################################
 ## parameters for dataloader
 #########################################################################################################
-batch_size  = opt.bs
+batch_size  = mhyp.batch_size
 random_seed = 555
 random.seed(random_seed)
 torch.manual_seed(random_seed)
@@ -166,34 +90,34 @@ torch.manual_seed(random_seed)
 ## train, valid dataset
 #########################################################################################################
 
-class_to_idx = {class_name: idx for idx, class_name in enumerate(opt.class_names_list)}
+class_to_idx = {class_name: idx for idx, class_name in enumerate(class_names_list)}
 
 datasets_dict = {}
 
 datasets_dict['train'] = CustomImageFolder(
-                                opt.train_path,
+                                mpfm.train_path,
                                 transforms.Compose([
-                                    transforms.Resize((opt.img_size, opt.img_size)),
+                                    transforms.Resize((mhyp.img_size, mhyp.img_size)),
                                     transforms.ToTensor(),
-                                    transforms.ColorJitter(brightness=opt.clr_b, contrast=opt.clr_c, saturation=opt.clr_s, hue=opt.clr_h),
-                                    transforms.RandomHorizontalFlip(p=opt.hflip),
-                                    transforms.RandomVerticalFlip(p=opt.vflip),
-                                    transforms.RandomRotation(degrees=opt.rotate),
+                                    transforms.ColorJitter(brightness=mhyp.brightness, contrast=mhyp.contrast, saturation=mhyp.saturation, hue=mhyp.hue),
+                                    transforms.RandomHorizontalFlip(p=mhyp.hflip),
+                                    transforms.RandomVerticalFlip(p=mhyp.vflip),
+                                    transforms.RandomRotation(degrees=mhyp.rotate),
                                     # transforms.RandomResizedCrop(size=512, scale=(0.08, 1.0), ratio=(0.75, 1.33), interpolation=2),
                                     # transforms.RandomErasing(),
                                     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
                                 ]),class_to_idx=class_to_idx)
 
 datasets_dict['valid'] = CustomImageFolder(
-                                opt.val_path,
+                                mpfm.val_path,
                                 transforms.Compose([
-                                    transforms.Resize((opt.img_size, opt.img_size)),
+                                    transforms.Resize((mhyp.img_size, mhyp.img_size)),
                                     transforms.ToTensor(),
                                     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-                                    transforms.ColorJitter(brightness=opt.clr_b, contrast=opt.clr_c, saturation=opt.clr_s, hue=opt.clr_h),
-                                    transforms.RandomHorizontalFlip(p=opt.hflip),
-                                    transforms.RandomVerticalFlip(p=opt.vflip),
-                                    transforms.RandomRotation(degrees=opt.rotate),
+                                    transforms.ColorJitter(brightness=mhyp.brightness, contrast=mhyp.contrast, saturation=mhyp.saturation, hue=mhyp.hue),
+                                    transforms.RandomHorizontalFlip(p=mhyp.hflip),
+                                    transforms.RandomVerticalFlip(p=mhyp.vflip),
+                                    transforms.RandomRotation(degrees=mhyp.rotate),
                                 ]),class_to_idx=class_to_idx)
 
 
@@ -218,51 +142,50 @@ print('batch_size : %d,  tvt : %d / %d' % (batch_size, batch_num['train'], batch
 #########################################################################################################
 ## model
 #########################################################################################################
-device = torch.device(f"cuda:{opt.gpu}" if torch.cuda.is_available() else "cpu")  # set gpu
+device = torch.device(f"cuda:{mhyp.gpu}" if torch.cuda.is_available() else "cpu")  # set gpu
 
-model_name = f'efficientnet-b{opt.model}'
+model_name = f'efficientnet-b{mhyp.model}'
 pretrained_model = f'./pretrained_weights/{model_name}.pth'
-image_size = EfficientNet.get_image_size(model_name)
-print('model input size: ', image_size)
-print(model_name)
-model = EfficientNet.from_pretrained(model_name, weights_path=pretrained_model, num_classes=opt.nc)
+# image_size = EfficientNet.get_image_size(model_name)
+# print('model input size: ', image_size)
+# print(model_name)
+model = EfficientNet.from_pretrained(model_name, weights_path=pretrained_model, num_classes=mhyp.num_class)
 model = model.to(device)
 
 #########################################################################################################
 ## Optimizer
 #########################################################################################################
-epoch = opt.epoch
+epoch = mhyp.epoch
 
-if opt.loss == 'ce':
+if mhyp.loss == 'ce':
     criterion = nn.CrossEntropyLoss()
     
-elif opt.loss == 'msm':
+elif mhyp.loss == 'msm':
     criterion = nn.MultiLabelSoftMarginLoss()
 
-if opt.optim == 'sgd':
+if mhyp.optim == 'sgd':
     optimizer_ft = optim.SGD(model.parameters(), 
-                             lr = opt.lr,
+                             lr = mhyp.lr,
                              momentum=0.9,
                              weight_decay=1e-4)
-elif opt.optim == 'adam':
-    optimizer_ft = optim.Adam(model.parameters(), lr = opt.lr, weight_decay=opt.wd)
+elif mhyp.optim == 'adam':
+    optimizer_ft = optim.Adam(model.parameters(), lr = mhyp.learning_rate, weight_decay=mhyp.weight_decay)
 
-lmbda = lambda epoch: opt.lr_lambda
+lmbda = lambda epoch: mhyp.lr_lambda
 exp_lr_scheduler = optim.lr_scheduler.MultiplicativeLR(optimizer_ft, lr_lambda=lmbda)
 
 ##########################################################################################
-### make folders
+### tensorboard
 ##########################################################################################
 
-
-twriter = SummaryWriter(tresult_path)
+twriter = SummaryWriter(mpfm.train_result)
 
 ##########################################################################################
 ### save arguments
 ##########################################################################################
-opt_list = [ f'{key}: {opt.__dict__[key]}' for key in opt.__dict__ ]
-with open(f'{tresult_path}/hyp.yaml', 'w') as f:
-    [f.write(f'{st}\n') for st in opt_list]
+
+mpfm.save_hyp(mhyp)
+mpfm.save_data(mdata)
 
 ##########################################################################################
 ### train
@@ -359,8 +282,10 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     best_idx = epoch
                     best_acc = epoch_acc
                     best_model_wts = copy.deepcopy(model.state_dict())
-                    torch.save(model.state_dict(), f'{weight_path}/best.pt')
+                    torch.save(model.state_dict(), f'{mpfm.weight_path}/best.pt')
                     print('==> best model saved - %d / %.1f'%(best_idx, best_acc))
+
+    result_file.close()
 
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
@@ -368,10 +293,9 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
     # load best model weights
     # model.load_state_dict(best_model_wts)
-    torch.save(model.state_dict(), f'{weight_path}/last.pt')
+    torch.save(model.state_dict(), f'{mpfm.weight_path}/last.pt')
     print('model saved')
 
-    result_csv.close()
 
     return model, best_idx, best_acc, train_loss, train_acc, valid_loss, valid_acc
 
