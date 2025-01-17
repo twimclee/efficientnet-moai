@@ -30,10 +30,10 @@ from tqdm import tqdm
 
 import yaml
 import csv
-from datetime import datetime, timedelta
 
 from pathfilemgr import MPathFileManager
 from hyp_data import MHyp, MData
+from utiles import remaining_time
 
 import argparse
 parser = argparse.ArgumentParser()
@@ -186,21 +186,6 @@ twriter = SummaryWriter(mpfm.train_result)
 
 mpfm.save_hyp(mhyp)
 mpfm.save_data(mdata)
-
-##########################################################################################
-### time leftt
-##########################################################################################
-
-def remaining_time(since, epoch, epochs, start_epoch=0):
-    time_now = time.time()
-    elapsed = time_now - since
-    epochs_done = (epoch - start_epoch + 1)
-    avg_epoch_time = elapsed / epochs_done if epochs_done > 0 else 0
-    epochs_left = (epochs - 1) - epoch
-    eta_sec = avg_epoch_time * epochs_left
-    time_left_str = str(timedelta(seconds=int(eta_sec)))
-    return time_left_str
-    # log_vals += [time_left_str]
 
 ##########################################################################################
 ### train
