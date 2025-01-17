@@ -153,7 +153,7 @@ model = EfficientNet.from_pretrained(model_name, weights_path=pretrained_model, 
 model = model.to(device)
 
 #########################################################################################################
-## Optimizer
+## Loss & Optimizer
 #########################################################################################################
 epoch = mhyp.epoch
 
@@ -163,13 +163,13 @@ if mhyp.loss == 'ce':
 elif mhyp.loss == 'msm':
     criterion = nn.MultiLabelSoftMarginLoss()
 
+
 if mhyp.optim == 'sgd':
-    optimizer_ft = optim.SGD(model.parameters(), 
-                             lr = mhyp.lr,
-                             momentum=0.9,
-                             weight_decay=1e-4)
+    optimizer_ft = optim.SGD(model.parameters(), lr=mhyp.lr, momentum=0.9, weight_decay=mhyp.weight_decay)
 elif mhyp.optim == 'adam':
-    optimizer_ft = optim.Adam(model.parameters(), lr = mhyp.learning_rate, weight_decay=mhyp.weight_decay)
+    optimizer_ft = optim.Adam(model.parameters(), lr=mhyp.learning_rate, weight_decay=mhyp.weight_decay)
+elif mhyp.optim == 'adamw':
+    optimizer_ft = optim.AdamW(model.parameters(), lr=mhyp.learning_rate, weight_decay=mhyp.weight_deca)
 
 lmbda = lambda epoch: mhyp.lr_lambda
 exp_lr_scheduler = optim.lr_scheduler.MultiplicativeLR(optimizer_ft, lr_lambda=lmbda)
@@ -186,6 +186,21 @@ twriter = SummaryWriter(mpfm.train_result)
 
 mpfm.save_hyp(mhyp)
 mpfm.save_data(mdata)
+
+##########################################################################################
+### time leftt
+##########################################################################################
+
+def remaining_time(since, epoch, epochs, start_epoch=0):
+    time_now = time.time()
+    elapsed = time_now - since
+    epochs_done = (epoch - start_epoch + 1)
+    avg_epoch_time = elapsed / epochs_done if epochs_done > 0 else 0
+    epochs_left = (epochs - 1) - epoch
+    eta_sec = avg_epoch_time * epochs_left
+    time_left_str = str(timedelta(seconds=int(eta_sec)))
+    return time_left_str
+    # log_vals += [time_left_str]
 
 ##########################################################################################
 ### train
@@ -211,6 +226,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
             running_loss, running_corrects, num_cnt = 0.0, 0, 0
             
+
+            remaining = remaining_time(since, epoch, num_epochs)
 
             with tqdm(dataloaders[phase], unit="batch") as tepoch:
                 tepoch.set_description(f"[{phase}] Epoch {epoch}")
@@ -269,10 +286,8 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
 
                     twriter.add_scalar("val/loss", epoch_loss, epoch)
                     twriter.add_scalar("val/acc", epoch_acc, epoch)
-
-                    ctime = datetime.now().strftime("%H:%M:%S")
                     
-                    result_csv.writerow([epoch, epoch_acc, epoch_loss, ctime])
+                    result_csv.writerow([epoch, epoch_acc, epoch_loss, remaining])
                     result_file.flush()
 
                 print('{} Loss: {:.4f} Acc: {:.2f}'.format(phase, epoch_loss, epoch_acc))
