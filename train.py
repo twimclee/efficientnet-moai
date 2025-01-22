@@ -62,7 +62,7 @@ mpfm.load_train_data(mdata)
 
 result_file = open(mpfm.result_csv, mode='a', newline='', encoding='utf-8')
 result_csv = csv.writer(result_file)
-result_csv.writerow(["epoch", "accuracy", "loss", "time"])
+result_csv.writerow(["epoch", "time", "accuracy", "loss"])
 
 ##########################################################################################
 ### load data
@@ -272,7 +272,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     twriter.add_scalar("val/loss", epoch_loss, epoch)
                     twriter.add_scalar("val/acc", epoch_acc, epoch)
                     
-                    result_csv.writerow([epoch, epoch_acc, epoch_loss, remaining])
+                    result_csv.writerow([epoch, remaining, epoch_acc, epoch_loss])
                     result_file.flush()
 
                 print('{} Loss: {:.4f} Acc: {:.2f}'.format(phase, epoch_loss, epoch_acc))
