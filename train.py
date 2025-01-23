@@ -254,7 +254,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     scheduler.step()
 
                 epoch_loss = float(running_loss / num_cnt)
-                epoch_acc  = float((running_corrects.double() / num_cnt).cpu()*100)
+                epoch_acc  = float((running_corrects.double() / num_cnt).cpu())
                 
                 tepoch.set_postfix(loss=loss.item(), accuracy=epoch_acc)
 
