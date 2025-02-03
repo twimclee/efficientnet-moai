@@ -43,7 +43,7 @@ model.set_swish(memory_efficient=False)
 torch.onnx.export(model, 
 	dummy_input, 
 	SAVE, 
-	# opset_version=12,
+	opset_version=12,
 	training=torch.onnx.TrainingMode.EVAL,
 	do_constant_folding=True,
 	export_params=True,
