@@ -13,10 +13,12 @@ class ImageDataSet(Dataset):
         self.root = root
         self.transform = transform
 
+        print(self.root)
+
         if subdir:
             self.images = self.__subdirectory()
         else:
-            self.images = [f for f in listdir(self.root) if isfile(join(self.root, f))]
+            self.images = [join(self.root, f) for f in listdir(self.root) if isfile(join(self.root, f))]
 
     def __len__(self):
         return len(self.images)
@@ -30,8 +32,8 @@ class ImageDataSet(Dataset):
         return dirs
 
     def __getitem__(self, index):
-        # path = join(self.root, self.images[index])
-        path = self.images[index]  # for linux
+        path = self.images[index]
+
         img = Image.open(path).convert('RGB')
         
         if self.transform is not None:
@@ -41,12 +43,10 @@ class ImageDataSet(Dataset):
 
 class CustomImageFolder(datasets.ImageFolder):
     def __init__(self, root, transform=None, target_transform=None, class_to_idx=None):
-        # 기존 ImageFolder를 초기화
         super().__init__(root, transform=transform, target_transform=target_transform)
 
         if class_to_idx:
             self.class_to_idx = class_to_idx
-            # 클래스 인덱스를 업데이트합니다
             self.idx_to_class = {v: k for k, v in class_to_idx.items()}
 
             new_samples = []
