@@ -7,6 +7,13 @@ from torchvision.utils import save_image
 
 from dataset import ImageDataSet
 
+from custom_callbacks import (
+    inference_ready_callback,
+    inference_start_callback,
+    inference_epoch_end_callback,
+    inference_end_callback
+)
+
 import numpy as np
 import os
 
@@ -81,12 +88,14 @@ for i, (img, path) in enumerate(dataloader):
 
 softmax = nn.Softmax(dim=1)
 def test_and_save(model):
+    inference_ready_callback()
     model.eval()
 
     total = len(test_dataset)
     stime = time.time()
+    inference_start_callback()
     with torch.no_grad():
-        
+        total_cnt = len(dataloader)
         for i, (img, path) in enumerate(dataloader):
             fname = path[0].rsplit('.', 1)[0]
             fname = fname.rsplit('/', 1)[-1]
@@ -109,11 +118,15 @@ def test_and_save(model):
             with open(f'{mpfm.test_result}/{fname}.txt', 'w') as file:
                 file.write(str_outputs[:-1])
 
+            inference_epoch_end_callback(i+1, total_cnt)
+
     etime = time.time()
     ttime = etime - stime
     ttl_time = round(ttime, 2)
     avg_time = round(ttime/(i+1) * 1000, 2)
     print(f"[time] total: {ttl_time}sec, avg: {avg_time}ms")
+    
+    inference_end_callback()
 
 
 if __name__ == "__main__":

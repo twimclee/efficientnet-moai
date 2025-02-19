@@ -21,6 +21,13 @@ from torch.utils.data import Subset
 
 from efficientnet_pytorch import EfficientNet
 
+from custom_callbacks import (
+    train_ready_callback,
+    train_start_callback,
+    train_epoch_end_callback,
+    train_end_callback
+)
+
 from dataset import CustomImageFolder
 from torchvision import transforms, datasets
 from torchvision.utils import save_image
@@ -192,12 +199,14 @@ mpfm.save_data(mdata)
 ##########################################################################################
 softmax = nn.Softmax(dim=1)
 def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+    train_ready_callback()
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_acc = 0.0
     train_loss, train_acc, valid_loss, valid_acc = [], [], [], []
 
+    train_start_callback()
     for epoch in range(num_epochs):
         print('Epoch {}/{}'.format(epoch, num_epochs - 1))
         print('-' * 10)
@@ -273,6 +282,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
                     twriter.add_scalar("val/acc", epoch_acc, epoch)
                     
                     result_csv.writerow([epoch, remaining, epoch_acc, epoch_loss])
+                    train_epoch_end_callback(epoch, remaining, epoch_acc, epoch_loss)
                     result_file.flush()
 
                 print('{} Loss: {:.4f} Acc: {:.2f}'.format(phase, epoch_loss, epoch_acc))
@@ -290,6 +300,7 @@ def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))
     print('Best valid Acc (Epoch %d): %.1f' %(best_idx, best_acc))
+    train_end_callback()
 
     # load best model weights
     # model.load_state_dict(best_model_wts)

@@ -4,6 +4,11 @@ from efficientnet_pytorch import EfficientNet
 
 import argparse
 
+from custom_callbacks import (
+	export_ready_callback,
+	export_start_callback,
+	export_end_callback
+)
 
 from pathfilemgr import MPathFileManager
 from hyp_data import MHyp, MData
@@ -23,7 +28,7 @@ mdata = MData()
 mpfm.load_test_hyp(mhyp)
 mpfm.load_test_data(mdata)
 
-
+export_ready_callback()
 model_name = f'efficientnet-b{mhyp.model}'
 model = EfficientNet.from_name(model_name, num_classes=mhyp.num_class)
 
@@ -40,6 +45,7 @@ dummy_output = model(dummy_input)
 SAVE = f"{mpfm.weight_path}/best.onnx"
 
 model.set_swish(memory_efficient=False)
+export_start_callback()
 torch.onnx.export(model, 
 	dummy_input, 
 	SAVE, 
@@ -56,3 +62,4 @@ onnx.checker.check_model(model)
 
 # Print a human readable representation of the graph
 onnx.helper.printable_graph(model.graph)
+export_end_callback()
