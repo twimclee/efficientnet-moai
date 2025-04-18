@@ -53,8 +53,8 @@ torch.onnx.export(model,
 	training=torch.onnx.TrainingMode.EVAL,
 	do_constant_folding=True,
 	export_params=True,
-    input_names=['images'],
-    output_names=['output0'],
+    input_names=['images'],		# input name
+    output_names=['output0'],	# ouput name
 	verbose=False,)
 
 model = onnx.load(SAVE)
